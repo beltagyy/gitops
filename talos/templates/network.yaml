@@ -1,0 +1,16 @@
+machine:
+  network:
+    hostname: ${node_name}
+    nameservers:
+%{ for ns in nameservers ~}
+      - ${ns}
+%{ endfor ~}
+    interfaces:
+      - interface: eth0
+        addresses:
+%{ for address in addresses ~}
+        - ${address}
+%{ endfor ~}
+        routes:
+          - network: 0.0.0.0/0
+            gateway: ${gateway}
