@@ -14,15 +14,19 @@ locals {
     "net.ifnames=0" #ensures interface name is standard eth0
   ]
   talos_kernel_modules = [
-    #modules used for longhorn
+    #modules used for longhorn and storage
     "nvme_tcp",
     "vfio_pci",
-    "uio_pci_generic"
+    "uio_pci_generic",
+    "br_netfilter",  # for Cilium CNI
+    "overlay"        # for container networking
   ]
   talos_extensions = [
-    #extensions needed for longhorn
-    "iscsi-tools",
-    "util-linux-tools"
+    #extensions needed for longhorn and storage
+    "siderolabs/iscsi-tools",
+    "siderolabs/util-linux-tools",
+    # Additional useful extensions
+    "siderolabs/qemu-guest-agent"
   ]
 }
 ## Secrets
@@ -59,11 +63,36 @@ module "bootstrap-node" {
   talos_extensions = local.talos_extensions
   cluster_endpoint = local.controlplane_url
   cluster_inline_manifests = {
+    # Core Infrastructure
     namespaces = "manifests/namespaces.yaml"
-    argocd = "manifests/argocd.yaml"
+
+    # Networking - CNI must be deployed first
+    cilium = "manifests/cilium.yaml"
+
+    # Load Balancer & Ingress
     metallb = "manifests/metallb.yaml"
-    "cert-manager" = "manifests/cert_manager.yaml"
     ingress = "manifests/ingress.yaml"
+
+    # Certificate Management
+    "cert-manager" = "manifests/cert_manager.yaml"
+
+    # Storage - CSI Driver
+    longhorn = "manifests/longhorn.yaml"
+
+    # GitOps
+    argocd = "manifests/argocd.yaml"
+    "argocd-applications" = "manifests/argocd-applications.yaml"
+
+    # Monitoring & Logging
+    "prometheus-grafana" = "manifests/prometheus-grafana.yaml"
+    loki = "manifests/loki.yaml"
+
+    # CI/CD & Management
+    jenkins = "manifests/jenkins.yaml"
+    portainer = "manifests/portainer.yaml"
+
+    # Object Storage
+    minio = "manifests/minio.yaml"
   }
   config_templates = {
     "templates/network.yaml" = {
