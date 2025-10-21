@@ -1,3 +1,3 @@
 # gitops
-Talos Bootstraping
-Integration with ArgoCD for GitOps 
+- Talos Bootstraping
+- Integration with ArgoCD for GitOps 
