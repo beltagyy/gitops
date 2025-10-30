@@ -50,3 +50,5 @@ terraform.rc
 ### Talos specific gitignore
 
 **/*talosconfig
+
+.claude
