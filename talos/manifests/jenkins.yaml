@@ -1,0 +1,267 @@
+# Jenkins v2.479 - CI/CD Automation Server with Persistent Storage
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jenkins
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins
+  namespace: jenkins
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jenkins
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get","list","watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get","list","watch","create","update","patch","delete"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get","list","watch","create","update","patch","delete"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get","list","watch","create","update","patch","delete"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get","list","watch","create","update","patch","delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments","statefulsets"]
+  verbs: ["get","list","watch","create","update","patch","delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: jenkins
+subjects:
+- kind: ServiceAccount
+  name: jenkins
+  namespace: jenkins
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-pvc
+  namespace: jenkins
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jenkins-config
+  namespace: jenkins
+data:
+  apply_config.sh: |-
+    mkdir -p /var/jenkins_home/init.groovy.d;
+    cp -n /var/jenkins_config/*.groovy /var/jenkins_home/init.groovy.d/;
+  jenkins.yaml: |-
+    jenkins:
+      securityRealm:
+        local:
+          allowsSignup: false
+      authorizationStrategy:
+        loggedInUsersCanDoAnything:
+          allowAnonymousRead: false
+      numExecutors: 5
+      remotingSecurity:
+        enabled: true
+      clouds:
+      - kubernetes:
+          name: "kubernetes"
+          serverUrl: "https://kubernetes.default"
+          skipTlsVerify: true
+          namespace: "jenkins"
+          jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
+          jenkinsTunnel: "jenkins-agent.jenkins.svc.cluster.local:50000"
+          connectTimeout: 0
+          readTimeout: 0
+          containerCapStr: 100
+          maxRequestsPerHostStr: 64
+          retentionTimeout: 5
+          waitForPodSec: 600
+          templates:
+          - name: "default"
+            namespace: "jenkins"
+            label: "jenkins-agent"
+            nodeUsageMode: NORMAL
+            containers:
+            - name: "jnlp"
+              image: "jenkins/inbound-agent:latest"
+              alwaysPullImage: false
+              workingDir: "/home/jenkins/agent"
+              ttyEnabled: true
+              resourceRequestCpu: "500m"
+              resourceRequestMemory: "512Mi"
+              resourceLimitCpu: "1000m"
+              resourceLimitMemory: "1Gi"
+            serviceAccount: "jenkins"
+    unclassified:
+      location:
+        url: "http://jenkins.jenkins.svc.cluster.local:8080/"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  serviceName: jenkins
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      serviceAccountName: jenkins
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      initContainers:
+      - name: init-jenkins
+        image: jenkins/jenkins:2.479-jdk17
+        command:
+        - sh
+        - -c
+        - |
+          chown -R 1000:1000 /var/jenkins_home || true
+        volumeMounts:
+        - name: jenkins-home
+          mountPath: /var/jenkins_home
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:2.479-jdk17
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: jnlp
+          containerPort: 50000
+        env:
+        - name: JAVA_OPTS
+          value: "-Djenkins.install.runSetupWizard=false -Dhudson.model.DirectoryBrowserSupport.CSP=\"sandbox allow-same-origin allow-scripts; default-src 'self'; script-src * 'unsafe-eval'; img-src *; style-src * 'unsafe-inline'; font-src *\""
+        - name: CASC_JENKINS_CONFIG
+          value: /var/jenkins_config/jenkins.yaml
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        volumeMounts:
+        - name: jenkins-home
+          mountPath: /var/jenkins_home
+        - name: jenkins-config
+          mountPath: /var/jenkins_config
+        livenessProbe:
+          httpGet:
+            path: /login
+            port: 8080
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /login
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: jenkins-home
+        persistentVolumeClaim:
+          claimName: jenkins-pvc
+      - name: jenkins-config
+        configMap:
+          name: jenkins-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  type: ClusterIP
+  selector:
+    app: jenkins
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: jnlp
+    port: 50000
+    targetPort: 50000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-agent
+  namespace: jenkins
+spec:
+  type: ClusterIP
+  selector:
+    app: jenkins
+  ports:
+  - name: jnlp
+    port: 50000
+    targetPort: 50000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jenkins
+  namespace: jenkins
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: jenkins.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: jenkins
+            port:
+              number: 8080
+  tls:
+  - hosts:
+    - jenkins.example.com
+    secretName: jenkins-tls

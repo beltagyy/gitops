@@ -1,0 +1,99 @@
+# ArgoCD Applications for GitOps Management
+# These applications can be used to manage workloads via ArgoCD
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: applications
+---
+# Application Project for cluster applications
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cluster-apps
+  namespace: argocd
+spec:
+  description: Cluster-wide applications
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+---
+# Example: Nginx Application via ArgoCD
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-app
+  namespace: argocd
+spec:
+  project: cluster-apps
+  source:
+    repoURL: https://github.com/YOUR_REPO/gitops.git
+    targetRevision: main
+    path: apps/nginx
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: applications
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+---
+# Certificate Issuer for Let's Encrypt
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+---
+# MetalLB IP Address Pool Configuration
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.198.141.200-10.198.141.250
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: default-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - default-pool
