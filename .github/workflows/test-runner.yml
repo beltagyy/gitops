@@ -1,0 +1,10 @@
+name: Test KEDA Runner
+ 
+on:
+  workflow_dispatch:
+ 
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - run: echo "Runner is working!"
