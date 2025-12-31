@@ -1,0 +1,294 @@
+---
+# Longhorn Recurring Jobs - Automated Snapshots and Backups
+# These jobs run automatically based on cron schedules
+
+# 1. HOURLY SNAPSHOT - For high-performance workloads
+# - Runs every hour at minute 0
+# - Keeps last 24 snapshots (24 hours of history)
+# - Type: snapshot (local)
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-hourly
+  namespace: longhorn-system
+spec:
+  cron: "0 * * * *"
+  task: "snapshot"
+  groups: []
+  retain: 24
+  concurrency: 2
+  labels:
+    schedule: "hourly"
+    type: "snapshot"
+---
+# 2. DAILY SNAPSHOT - For balanced and HA workloads
+# - Runs daily at 2 AM
+# - Keeps last 7 snapshots (7 days of history)
+# - Type: snapshot (local)
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-daily
+  namespace: longhorn-system
+spec:
+  cron: "0 2 * * *"
+  task: "snapshot"
+  groups: []
+  retain: 7
+  concurrency: 3
+  labels:
+    schedule: "daily"
+    type: "snapshot"
+---
+# 3. WEEKLY SNAPSHOT - For long-term snapshot retention
+# - Runs weekly on Sunday at 3 AM
+# - Keeps last 4 snapshots (4 weeks of history)
+# - Type: snapshot (local)
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-weekly
+  namespace: longhorn-system
+spec:
+  cron: "0 3 * * 0"
+  task: "snapshot"
+  groups: []
+  retain: 4
+  concurrency: 2
+  labels:
+    schedule: "weekly"
+    type: "snapshot"
+---
+# 4. DAILY BACKUP - For critical data (local backup)
+# - Runs daily at 1 AM
+# - Keeps last 7 backups (7 days of history)
+# - Type: backup (can be local or remote)
+# - Configure backupTarget in longhorn-values.yaml for remote backups
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: backup-daily
+  namespace: longhorn-system
+spec:
+  cron: "0 1 * * *"
+  task: "backup"
+  groups: []
+  retain: 7
+  concurrency: 2
+  labels:
+    schedule: "daily"
+    type: "backup"
+---
+# 5. WEEKLY BACKUP - For long-term backup retention
+# - Runs weekly on Sunday at 4 AM
+# - Keeps last 4 backups (4 weeks of history)
+# - Type: backup
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: backup-weekly
+  namespace: longhorn-system
+spec:
+  cron: "0 4 * * 0"
+  task: "backup"
+  groups: []
+  retain: 4
+  concurrency: 2
+  labels:
+    schedule: "weekly"
+    type: "backup"
+---
+# 6. MONTHLY BACKUP - For compliance and long-term retention
+# - Runs monthly on the 1st at 5 AM
+# - Keeps last 12 backups (1 year of history)
+# - Type: backup
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: backup-monthly
+  namespace: longhorn-system
+spec:
+  cron: "0 5 1 * *"
+  task: "backup"
+  groups: []
+  retain: 12
+  concurrency: 1
+  labels:
+    schedule: "monthly"
+    type: "backup"
+---
+# 7. SNAPSHOT CLEANUP - Removes old snapshots to save space
+# - Runs daily at 6 AM
+# - Type: snapshot-cleanup
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-cleanup
+  namespace: longhorn-system
+spec:
+  cron: "0 6 * * *"
+  task: "snapshot-cleanup"
+  groups: []
+  retain: 1  # Not used for cleanup jobs
+  concurrency: 3
+  labels:
+    schedule: "daily"
+    type: "cleanup"
+---
+# 8. FILESYSTEM TRIM - Reclaims unused space
+# - Runs weekly on Saturday at 2 AM
+# - Helps with thin provisioning and space reclamation
+# - Type: filesystem-trim
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: filesystem-trim-weekly
+  namespace: longhorn-system
+spec:
+  cron: "0 2 * * 6"
+  task: "filesystem-trim"
+  groups: []
+  retain: 1
+  concurrency: 2
+  labels:
+    schedule: "weekly"
+    type: "maintenance"
+---
+# RecurringJob Groups - Apply multiple jobs to volumes at once
+# Group: production-critical
+# - Hourly snapshots + daily backups
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: production-critical-group
+  namespace: longhorn-system
+spec:
+  groups:
+    - snapshot-hourly
+    - backup-daily
+    - backup-weekly
+  task: "snapshot"
+  cron: "0 * * * *"  # Required but not used for groups
+  retain: 1  # Required but not used for groups
+  labels:
+    group: "production-critical"
+---
+# Group: standard-production
+# - Daily snapshots + weekly backups
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: standard-production-group
+  namespace: longhorn-system
+spec:
+  groups:
+    - snapshot-daily
+    - backup-weekly
+  task: "snapshot"
+  cron: "0 0 * * *"
+  retain: 1
+  labels:
+    group: "standard-production"
+---
+# Example: Backup Target ConfigMap (Local NFS)
+# Uncomment and configure for local NFS backup
+---
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: longhorn-backup-target
+#   namespace: longhorn-system
+# data:
+#   # For local NFS backup
+#   backup-target: "nfs://nfs-server.example.com:/longhorn-backups"
+#
+#   # For S3-compatible storage (MinIO, AWS S3, etc.)
+#   # backup-target: "s3://longhorn-backups@us-east-1/"
+---
+# Example: S3 Backup Credentials Secret
+# Uncomment and configure for S3 backups
+---
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: s3-backup-secret
+#   namespace: longhorn-system
+# type: Opaque
+# stringData:
+#   AWS_ACCESS_KEY_ID: "your-access-key"
+#   AWS_SECRET_ACCESS_KEY: "your-secret-key"
+#   AWS_ENDPOINTS: "https://s3.amazonaws.com"  # or MinIO endpoint
+#   AWS_CERT: ""
+#   AWS_REGION: "us-east-1"
+#   VIRTUAL_HOSTED_STYLE: "false"  # Set to true for AWS S3
+---
+# PersistentVolumeClaim Example - Using High Availability StorageClass
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-pvc-ha
+  namespace: default
+  labels:
+    app: example
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-high-availability
+  resources:
+    requests:
+      storage: 10Gi
+---
+# PersistentVolumeClaim Example - Using High Performance StorageClass
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-pvc-performance
+  namespace: default
+  labels:
+    app: example-db
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-high-performance
+  resources:
+    requests:
+      storage: 50Gi
+---
+# VolumeSnapshot Example - Manual snapshot
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: example-snapshot
+  namespace: default
+spec:
+  volumeSnapshotClassName: longhorn-snapshot-class
+  source:
+    persistentVolumeClaimName: example-pvc-ha
+---
+# Example: Restore from snapshot
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restored-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-high-availability
+  dataSource:
+    name: example-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+  resources:
+    requests:
+      storage: 10Gi

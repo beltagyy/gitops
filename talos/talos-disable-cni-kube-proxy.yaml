@@ -1,0 +1,13 @@
+# Talos Machine Config Patch - Disable Flannel CNI and kube-proxy
+# This patch disables the default Flannel CNI and kube-proxy to allow Cilium to take over
+# Apply this patch when generating or patching your Talos machine configuration
+
+cluster:
+  network:
+    # Disable Flannel CNI (Talos default)
+    cni:
+      name: none
+
+  # Disable kube-proxy (Cilium will replace it with eBPF)
+  proxy:
+    disabled: true

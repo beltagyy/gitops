@@ -1,0 +1,218 @@
+---
+# Longhorn Storage Classes - Multiple Performance Profiles
+# Choose the right storage class based on your workload requirements
+
+# 1. HIGH PERFORMANCE - For databases and latency-sensitive workloads
+# - 1 replica for maximum performance
+# - Data locality enabled (pod runs on same node as data)
+# - Best for: PostgreSQL, MySQL, Redis, high-IOPS applications
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-high-performance
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "1"
+  staleReplicaTimeout: "2880"
+  dataLocality: "best-effort"
+  fromBackup: ""
+  fsType: "ext4"
+  diskSelector: "ssd,nvme"  # Only use SSD/NVMe disks
+  nodeSelector: ""
+  recurringJobSelector: '[{"name":"snapshot-hourly","isGroup":false}]'
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "true"
+  replicaAutoBalance: "best-effort"
+---
+# 2. HIGH AVAILABILITY - For critical production workloads
+# - 3 replicas across different nodes and zones
+# - Fast replica rebuild enabled
+# - Best for: Critical applications, production databases, stateful services
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-high-availability
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"  # Default class
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain  # Retain for critical data
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "3"
+  staleReplicaTimeout: "2880"
+  dataLocality: "disabled"
+  fromBackup: ""
+  fsType: "ext4"
+  diskSelector: ""
+  nodeSelector: ""
+  recurringJobSelector: '[{"name":"snapshot-daily","isGroup":false},{"name":"backup-weekly","isGroup":false}]'
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "true"
+  replicaAutoBalance: "best-effort"
+  replicaSoftAntiAffinity: "false"
+  replicaZoneSoftAntiAffinity: "true"
+  replicaDiskSoftAntiAffinity: "true"
+---
+# 3. BALANCED - Good balance of performance and redundancy
+# - 2 replicas for decent redundancy
+# - Soft anti-affinity for better distribution
+# - Best for: Most applications, web servers, application state
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-balanced
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "2"
+  staleReplicaTimeout: "2880"
+  dataLocality: "disabled"
+  fromBackup: ""
+  fsType: "ext4"
+  diskSelector: ""
+  nodeSelector: ""
+  recurringJobSelector: '[{"name":"snapshot-daily","isGroup":false}]'
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "true"
+  replicaAutoBalance: "best-effort"
+  replicaSoftAntiAffinity: "true"
+---
+# 4. COST OPTIMIZED - For dev/test and non-critical workloads
+# - 1 replica to save storage space
+# - No automatic snapshots (manual snapshots available)
+# - Best for: Development, testing, ephemeral data, CI/CD
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-cost-optimized
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "1"
+  staleReplicaTimeout: "2880"
+  dataLocality: "best-effort"
+  fromBackup: ""
+  fsType: "ext4"
+  diskSelector: ""
+  nodeSelector: ""
+  recurringJobSelector: ""  # No automatic snapshots
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "true"
+  replicaAutoBalance: "disabled"
+---
+# 5. DATABASE OPTIMIZED - Specifically tuned for databases
+# - 3 replicas for HA
+# - Data locality for read performance
+# - Fast replica rebuild
+# - Best for: PostgreSQL, MySQL, MongoDB, Cassandra
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-database
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer  # Wait for pod scheduling
+parameters:
+  numberOfReplicas: "3"
+  staleReplicaTimeout: "2880"
+  dataLocality: "best-effort"
+  fromBackup: ""
+  fsType: "ext4"
+  diskSelector: "ssd,nvme"
+  nodeSelector: "workload=database"  # Use nodes labeled for databases
+  recurringJobSelector: '[{"name":"snapshot-hourly","isGroup":false},{"name":"backup-daily","isGroup":false}]'
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "true"
+  replicaAutoBalance: "best-effort"
+  replicaZoneSoftAntiAffinity: "true"
+  replicaDiskSoftAntiAffinity: "true"
+---
+# 6. FAST REBUILD - For workloads that need quick recovery
+# - 2 replicas with fast rebuild enabled
+# - Optimized for quick recovery from node failures
+# - Best for: Stateful applications, message queues
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-fast-rebuild
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "2"
+  staleReplicaTimeout: "2880"
+  dataLocality: "disabled"
+  fromBackup: ""
+  fsType: "ext4"
+  diskSelector: ""
+  nodeSelector: ""
+  recurringJobSelector: '[{"name":"snapshot-daily","isGroup":false}]'
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "true"
+  replicaAutoBalance: "best-effort"
+---
+# 7. SNAPSHOT OPTIMIZED - For workloads needing frequent snapshots
+# - 2 replicas
+# - Hourly snapshots with retention
+# - Best for: Development environments, testing, data versioning
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-snapshot-optimized
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "2"
+  staleReplicaTimeout: "2880"
+  dataLocality: "disabled"
+  fromBackup: ""
+  fsType: "ext4"
+  diskSelector: ""
+  nodeSelector: ""
+  recurringJobSelector: '[{"name":"snapshot-hourly","isGroup":false},{"name":"snapshot-daily","isGroup":false}]'
+  unmapMarkSnapChainRemoved: "ignored"
+  disableRevisionCounter: "false"  # Keep revision counter for snapshots
+  replicaAutoBalance: "best-effort"
+---
+# VolumeSnapshotClass for CSI snapshots
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: longhorn-snapshot-class
+  labels:
+    velero.io/csi-volumesnapshot-class: "true"
+driver: driver.longhorn.io
+deletionPolicy: Delete
+parameters:
+  type: snap

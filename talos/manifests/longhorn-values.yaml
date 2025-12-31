@@ -1,0 +1,253 @@
+# Longhorn Elite Configuration
+# Version: 1.7.x (latest stable)
+# Features: HA, Performance Optimization, Snapshots, Backups, Monitoring
+
+# Image Configuration
+image:
+  longhorn:
+    engine:
+      repository: longhornio/longhorn-engine
+      tag: v1.7.2
+    manager:
+      repository: longhornio/longhorn-manager
+      tag: v1.7.2
+    ui:
+      repository: longhornio/longhorn-ui
+      tag: v1.7.2
+    instanceManager:
+      repository: longhornio/longhorn-instance-manager
+      tag: v1.7.2
+    shareManager:
+      repository: longhornio/longhorn-share-manager
+      tag: v1.7.2
+    backingImageManager:
+      repository: longhornio/backing-image-manager
+      tag: v1.7.2
+    supportBundleKit:
+      repository: longhornio/support-bundle-kit
+      tag: v0.0.42
+  csi:
+    attacher:
+      repository: longhornio/csi-attacher
+      tag: v4.6.1
+    provisioner:
+      repository: longhornio/csi-provisioner
+      tag: v4.0.1
+    nodeDriverRegistrar:
+      repository: longhornio/csi-node-driver-registrar
+      tag: v2.12.0
+    resizer:
+      repository: longhornio/csi-resizer
+      tag: v1.11.2
+    snapshotter:
+      repository: longhornio/csi-snapshotter
+      tag: v7.0.2
+    livenessProbe:
+      repository: longhornio/livenessprobe
+      tag: v2.14.0
+  pullPolicy: IfNotPresent
+
+# Service Configuration
+service:
+  ui:
+    type: ClusterIP
+    nodePort: null
+  manager:
+    type: ClusterIP
+    nodePort: ""
+
+# Persistence Configuration
+persistence:
+  defaultClass: true
+  defaultFsType: ext4
+  defaultMkfsParams: ""
+  defaultClassReplicaCount: 3
+  defaultDataLocality: disabled
+  reclaimPolicy: Delete
+  migrationsNodeSelector: {}
+  nfsOptions: ""
+  recurringJobSelector:
+    enable: false
+    jobList: []
+  backingImage:
+    enable: false
+    name: ~
+    dataSourceType: ~
+    dataSourceParameters: ~
+    expectedChecksum: ~
+  defaultNodeSelector:
+    enable: false
+  removeSnapshotsDuringFilesystemTrim: ignored
+
+# CSI Configuration
+csi:
+  kubeletRootDir: /var/lib/kubelet
+  attacherReplicaCount: 3
+  provisionerReplicaCount: 3
+  resizerReplicaCount: 3
+  snapshotterReplicaCount: 3
+
+# Default Settings - Elite Configuration
+defaultSettings:
+  # Backup Configuration
+  backupTarget: ""  # Set to s3://bucket@region/path or nfs://server:/path
+  backupTargetCredentialSecret: ""
+  allowRecurringJobWhileVolumeDetached: true
+  backupstorePollInterval: 300
+  backupCompressionMethod: lz4
+  backupConcurrentLimit: 2
+  restoreConcurrentLimit: 2
+
+  # Storage Configuration
+  createDefaultDiskLabeledNodes: true
+  defaultDataPath: /var/lib/longhorn/
+  defaultDataLocality: disabled
+  replicaSoftAntiAffinity: false
+  replicaAutoBalance: best-effort
+  storageOverProvisioningPercentage: 200
+  storageMinimalAvailablePercentage: 25
+  storageReservedPercentageForDefaultDisk: 25
+
+  # Replica Configuration
+  defaultReplicaCount: 3
+  replicaZoneSoftAntiAffinity: true
+  replicaDiskSoftAntiAffinity: true
+  replicaReplenishmentWaitInterval: 600
+  concurrentReplicaRebuildPerNodeLimit: 5
+  disableReplicaRebuild: false
+  fastReplicaRebuildEnabled: true
+
+  # Performance Settings
+  guaranteedInstanceManagerCpu: 12
+  orphanAutoDeletion: false
+  nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+  nodeDrainPolicy: block-if-contains-last-replica
+  allowNodeDrainWithLastHealthyReplica: false
+  disableSchedulingOnCordonedNode: true
+
+  # Snapshot Settings
+  autoCleanupSystemGeneratedSnapshot: true
+  autoCleanupRecurringJobBackupSnapshot: true
+  snapshotDataIntegrity: enabled
+  snapshotDataIntegrityImmediateCheckAfterSnapshotCreation: false
+  snapshotDataIntegrityCronjob: "0 0 */7 * *"
+  removeSnapshotsDuringFilesystemTrim: ignored
+
+  # System Settings
+  priorityClass: longhorn-critical
+  autoSalvage: true
+  autoDeletePodWhenVolumeDetachedUnexpectedly: true
+  disableRevisionCounter: true
+  systemManagedPodsImagePullPolicy: if-not-present
+  allowVolumeCreationWithDegradedAvailability: true
+  upgradeChecker: true
+
+  # Advanced Features
+  v2DataEngine: false
+  offlineReplicaRebuilding: disabled
+  freezeFilesystemForSnapshot: disabled
+
+  # Concurrent Operations
+  concurrentAutomaticEngineUpgradePerNodeLimit: 3
+  concurrentVolumeBackupRestorePerNodeLimit: 5
+
+  # Talos-specific
+  taintToleration: ""
+  systemManagedComponentsNodeSelector: ""
+  kubernetesClusterAutoscalerEnabled: false
+
+  # Timeouts
+  engineReplicaTimeout: 8
+
+  # Recurring Jobs
+  recurringSuccessfulJobsHistoryLimit: 3
+  recurringFailedJobsHistoryLimit: 3
+  supportBundleFailedLimit: 1
+
+  # Network
+  storageNetwork: ""
+
+# Private Registry Configuration
+privateRegistry:
+  createSecret: false
+  registryUrl: ~
+  registryUser: ~
+  registryPasswd: ~
+  registrySecret: ~
+
+# Longhorn Manager
+longhornManager:
+  priorityClass: longhorn-critical
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  nodeSelector: {}
+  serviceAnnotations: {}
+
+# Longhorn Driver
+longhornDriver:
+  priorityClass: longhorn-critical
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+# Longhorn UI
+longhornUI:
+  replicas: 2
+  priorityClass: longhorn-critical
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  nodeSelector: {}
+
+# Ingress for Longhorn UI
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  host: longhorn.example.com
+  tls: true
+  tlsSecret: longhorn-tls
+  path: /
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  secrets: []
+
+# Enable Prometheus ServiceMonitor
+metrics:
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      prometheus: kube-prometheus
+    interval: 30s
+    scrapeTimeout: 10s
+    relabelings: []
+
+# Enable Recurring Job for snapshots
+enablePSP: false
+
+# OpenShift Configuration
+openshift:
+  enabled: false
+  ui:
+    route: true
+    port: 443
+
+# Resources for components
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Annotations
+annotations: {}
+
+# Labels
+labels: {}

@@ -1,0 +1,9 @@
+cluster:
+  network:
+    # Disable default Flannel CNI - Cilium will be used instead
+    cni:
+      name: none
+
+  # Disable kube-proxy - Cilium will replace it with eBPF
+  proxy:
+    disabled: true

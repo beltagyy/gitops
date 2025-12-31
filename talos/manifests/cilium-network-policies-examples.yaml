@@ -1,0 +1,177 @@
+---
+# Example namespace for demo applications
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-app
+  labels:
+    name: demo-app
+---
+# CiliumNetworkPolicy: Default Deny All Ingress
+# Best practice for zero-trust networking
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: demo-app
+spec:
+  endpointSelector: {}
+  ingress:
+  - {}
+  policyEnforcement: default
+---
+# CiliumNetworkPolicy: Allow DNS
+# Allow all pods to access DNS
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: demo-app
+spec:
+  endpointSelector: {}
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+      rules:
+        dns:
+        - matchPattern: "*"
+---
+# CiliumNetworkPolicy: L7 HTTP Policy
+# Allow only specific HTTP methods and paths
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-http-policy
+  namespace: demo-app
+spec:
+  endpointSelector:
+    matchLabels:
+      app: frontend
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: client
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - method: "GET"
+          path: "/api/.*"
+        - method: "POST"
+          path: "/api/data"
+---
+# CiliumNetworkPolicy: Service-to-Service with mTLS
+# Allow communication between microservices with identity-based security
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: service-to-service
+  namespace: demo-app
+spec:
+  endpointSelector:
+    matchLabels:
+      app: backend
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: frontend
+    toPorts:
+    - ports:
+      - port: "8080"
+        protocol: TCP
+---
+# CiliumClusterwideNetworkPolicy: Allow Hubble
+# Cluster-wide policy to allow Hubble observability
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-hubble
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.kubernetes.pod.namespace: kube-system
+      k8s:k8s-app: cilium
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: hubble-ui
+    toPorts:
+    - ports:
+      - port: "4244"
+        protocol: TCP
+---
+# CiliumNetworkPolicy: Egress to External HTTPS
+# Allow pods to access external HTTPS endpoints
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-external-https
+  namespace: demo-app
+spec:
+  endpointSelector:
+    matchLabels:
+      app: backend
+  egress:
+  - toFQDNs:
+    - matchPattern: "*.example.com"
+    - matchPattern: "api.github.com"
+    toPorts:
+    - ports:
+      - port: "443"
+        protocol: TCP
+---
+# CiliumEgressGatewayPolicy: Force egress through specific nodes
+# Useful for stable source IPs when communicating with external services
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: egress-gateway
+  namespace: demo-app
+spec:
+  selectors:
+  - podSelector:
+      matchLabels:
+        app: backend
+  destinationCIDRs:
+  - "0.0.0.0/0"
+  excludedCIDRs:
+  - "10.0.0.0/8"
+  - "192.168.0.0/16"
+  - "172.16.0.0/12"
+  egressGateway:
+    nodeSelector:
+      matchLabels:
+        egress-gateway: "true"
+    interface: eth0
+---
+# CiliumLocalRedirectPolicy: Service Mesh-like local redirect
+# Redirect traffic to local pods for better performance
+apiVersion: cilium.io/v2
+kind: CiliumLocalRedirectPolicy
+metadata:
+  name: local-redirect-cache
+  namespace: demo-app
+spec:
+  redirectFrontend:
+    serviceMatcher:
+      serviceName: redis-service
+      namespace: demo-app
+    toPorts:
+    - port: "6379"
+      protocol: TCP
+  redirectBackend:
+    localEndpointSelector:
+      matchLabels:
+        app: redis-local
+    toPorts:
+    - port: "6379"
+      protocol: TCP

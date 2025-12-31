@@ -66,35 +66,51 @@ module "bootstrap-node" {
     # Core Infrastructure
     namespaces = "manifests/namespaces.yaml"
 
-    # Networking - CNI must be deployed first
+    # Networking - CNI must be deployed FIRST before anything else
+    # Elite Cilium with native routing, WireGuard, Hubble, BGP, kube-proxy replacement
     cilium = "manifests/cilium.yaml"
 
+    # Gateway API - Required for advanced ingress with Cilium
+    #"gateway-api-crds" = "manifests/gateway-api-crds.yaml"
+
     # Load Balancer & Ingress
-    metallb = "manifests/metallb.yaml"
-    ingress = "manifests/ingress.yaml"
+   # metallb = "manifests/metallb.yaml"
+    #ingress = "manifests/ingress.yaml"
 
     # Certificate Management
     "cert-manager" = "manifests/cert_manager.yaml"
 
-    # Storage - CSI Driver
+    # Storage - CSI Driver (Elite Longhorn with HA, snapshots, backups)
     longhorn = "manifests/longhorn.yaml"
+    # "longhorn-storage-classes" = "manifests/longhorn-storage-classes.yaml"
+    # "longhorn-recurring-jobs" = "manifests/longhorn-recurring-jobs.yaml"
+
+    # Kubernetes Dashboard
+    headlamp = "manifests/headlamp.yaml"
 
     # GitOps
-    argocd = "manifests/argocd.yaml"
-    "argocd-applications" = "manifests/argocd-applications.yaml"
+    # argocd = "manifests/argocd.yaml"
+    # "argocd-applications" = "manifests/argocd-applications.yaml"
 
     # Monitoring & Logging
     "prometheus-grafana" = "manifests/prometheus-grafana.yaml"
     loki = "manifests/loki.yaml"
 
+    # Grafana Dashboards for Cilium and Longhorn
+    "grafana-dashboard-hubble" = "manifests/grafana-hubble-dashboard-configmap.yaml"
+    "grafana-dashboard-longhorn" = "manifests/longhorn-grafana-dashboard.yaml"
+
     # CI/CD & Management
-    jenkins = "manifests/jenkins.yaml"
+    # jenkins = "manifests/jenkins.yaml"
     portainer = "manifests/portainer.yaml"
 
     # Object Storage
     minio = "manifests/minio.yaml"
   }
   config_templates = {
+    # Disable Flannel CNI and kube-proxy for Cilium
+    "templates/disable_cni_kube_proxy.yaml" = {}
+
     "templates/network.yaml" = {
       node_name = "${var.env}-bootstrap-controlplane"
       nameservers = local.nameservers
@@ -120,6 +136,9 @@ module "nodes" {
   talos_extensions = each.value.override_talos_extensions == null ? local.talos_extensions : each.value.override_talos_extensions
   cluster_endpoint = local.controlplane_url
   config_templates = {
+    # Disable Flannel CNI and kube-proxy for Cilium
+    "templates/disable_cni_kube_proxy.yaml" = {}
+
     "templates/allow_scheduling_on_controlplanes.yaml" = {}
     "templates/network.yaml" = {
       node_name = "${var.env}-${each.key}"

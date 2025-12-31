@@ -1,0 +1,365 @@
+# Cilium Elite Configuration
+# Version: 1.17.x (latest stable)
+# Features: Native Routing, WireGuard, Service Mesh, Hubble, BGP, kube-proxy replacement
+
+# Image Configuration
+image:
+  repository: "quay.io/cilium/cilium"
+  tag: "v1.16.5"
+  pullPolicy: "IfNotPresent"
+
+operator:
+  image:
+    override: "quay.io/cilium/operator-generic:v1.16.5"
+  replicas: 2
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      trustCRDsExist: true
+
+# IPAMipam:
+  mode: "kubernetes"
+  operator:
+    clusterPoolIPv4PodCIDRList: ["10.244.0.0/16"]
+
+# Native Routing Configuration (No Tunneling)
+routingMode: "native"
+autoDirectNodeRoutes: true
+directRoutingSkipUnreachable: true
+ipv4NativeRoutingCIDR: "10.244.0.0/16"
+
+# Enable IPv4, Disable IPv6
+ipv4:
+  enabled: true
+ipv6:
+  enabled: false
+
+# Kube-proxy Replacement (eBPF-based)
+kubeProxyReplacement: true
+kubeProxyReplacementHealthzBindAddr: "0.0.0.0:10256"
+k8sServiceHost: "10.198.141.70"
+k8sServicePort: "6443"
+
+# Session Affinity
+sessionAffinity: true
+
+# Enable Socket LB
+socketLB:
+  enabled: true
+  hostNamespaceOnly: false
+
+# Node Port
+nodePort:
+  enabled: true
+  mode: "hybrid"
+
+# External IPs
+externalIPs:
+  enabled: true
+
+# Host Port
+hostPort:
+  enabled: true
+
+# Host Services
+hostServices:
+  enabled: true
+  protocols: "tcp,udp"
+
+# BPF Masquerading
+bpf:
+  masquerade: true
+  tproxy: true
+  hostLegacyRouting: false
+  lbExternalClusterIP: false
+  mapDynamicSizeRatio: 0.0025
+
+# BPF CT Settings for High Performance
+  ctTcpMax: 524288
+  ctAnyMax: 262144
+  natMax: 524288
+  neighMax: 524288
+  policyMapMax: 16384
+  lbMapMax: 65536
+
+# Bandwidth Manager
+bandwidthManager:
+  enabled: true
+  bbr: true
+
+# WireGuard Encryption (Zero-Trust)
+encryption:
+  enabled: true
+  type: "wireguard"
+  nodeEncryption: true
+  strictMode:
+    enabled: true
+    allowRemoteNodeIdentities: false
+    cidr: "10.244.0.0/16"
+
+# L7 Proxy (Envoy)
+l7Proxy: true
+envoy:
+  enabled: true
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      trustCRDsExist: true
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+
+# Service Mesh
+enableEnvoyConfig: true
+
+# Hubble (Observability)
+hubble:
+  enabled: true
+
+  # Hubble Metrics
+  metrics:
+    enabled:
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - httpV2:exemplars=true;labelsContext=source_ip,source_namespace,source_workload,destination_ip,destination_namespace,destination_workload,traffic_direction
+    serviceMonitor:
+      enabled: true
+      trustCRDsExist: true
+    dashboards:
+      enabled: true
+      annotations:
+        grafana_folder: "Cilium Hubble"
+
+  # Hubble Relay
+  relay:
+    enabled: true
+    replicas: 2
+    prometheus:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        trustCRDsExist: true
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  # Hubble UI
+  ui:
+    enabled: true
+    replicas: 2
+    ingress:
+      enabled: true
+      className: "traefik"
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+        traefik.ingress.kubernetes.io/router.tls: "true"
+      hosts:
+        - "hubble.example.com"
+      tls:
+        - secretName: hubble-ui-tls
+          hosts:
+            - "hubble.example.com"
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 64Mi
+
+# BGP Control Plane (disabled for initial setup - enable after configuring BGP)
+bgpControlPlane:
+  enabled: false
+
+# Enable Cilium Operator integration with BGP
+bgp:
+  enabled: false
+
+# L2 Announcements (for LoadBalancer services)
+l2announcements:
+  enabled: true
+
+# Network Policy
+policyEnforcementMode: "default"
+policyAuditMode: false
+
+# Enable L7 network policy
+l7Proxy: true
+
+# Enable DNS Proxy
+dnsproxy:
+  enabled: true
+
+# Endpoint Routes
+endpointRoutes:
+  enabled: true
+
+# Health Checking
+healthChecking: true
+healthPort: 9879
+
+# Enable Cilium Endpoint Slice
+enableCiliumEndpointSlice: true
+
+# Monitor Aggregation
+monitorAggregation: "medium"
+
+# Prometheus Integration
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    trustCRDsExist: true
+    labels:
+      prometheus: kube-prometheus
+
+# OpenTelemetry
+openTelemetry:
+  enabled: true
+  endpoint: "otel-collector.monitoring.svc.cluster.local:4317"
+
+# Rate Limiting
+rateLimiting:
+  enabled: true
+
+# Ingress Controller
+ingressController:
+  enabled: true
+  default: false
+  loadbalancerMode: "dedicated"
+  service:
+    annotations:
+      {}
+    type: LoadBalancer
+
+# Gateway API Support (Talos requirements)
+gatewayAPI:
+  enabled: true
+
+# Required for Gateway API on Talos
+enableAlpn: true
+enableAppProtocol: true
+
+# Enable local redirect policy
+localRedirectPolicy: true
+
+# Enable Egress Gateway (disabled - incompatible with CiliumEndpointSlice in v1.16.5)
+egressGateway:
+  enabled: false
+  reconciliationTriggerInterval: "1s"
+
+# Node Initialization (disabled for Talos - not needed)
+nodeinit:
+  enabled: false
+
+# Preflight
+preflight:
+  enabled: false
+
+# Resource Requirements
+resources:
+  limits:
+    cpu: 4000m
+    memory: 4Gi
+  requests:
+    cpu: 400m
+    memory: 512Mi
+
+# Rollout & Update
+rollOutCiliumPods: false
+updateStrategy:
+  type: "RollingUpdate"
+  rollingUpdate:
+    maxUnavailable: 2
+
+# Security Context (Talos-specific: drop SYS_MODULE)
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+# Cgroup settings for Talos
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# Tolerations
+tolerations:
+  - operator: Exists
+
+# Priority Class
+priorityClassName: "system-node-critical"
+
+# Enable Debug (set to false in production)
+debug:
+  enabled: false
+
+# Wait for kube-proxy to be removed
+waitForKubeProxy: false
+
+# Install CRDs
+installCRDs: true
+
+# Enable CNI Chaining (for Traefik integration)
+cni:
+  binPath: "/opt/cni/bin"
+  confPath: "/etc/cni/net.d"
+  exclusive: true
+  customConf: false
+  configMap: ""
+  install: true
+
+# Enable API Rate Limiting
+k8sClientRateLimit:
+  qps: 50
+  burst: 100
+
+# Cluster Info
+cluster:
+  name: "talos-cluster"
+  id: 1
+
+# Enable Endpoint GC
+enableCiliumEndpointGC: true
+
+# Clean State on Restart
+cleanBpfState: false
+
+# Advanced Features
+enableIPv4Masquerade: true
+enableIPv6Masquerade: false
+installNoConntrackIptablesRules: false
+
+# Misc
+wellKnownIdentities:
+  enabled: true
