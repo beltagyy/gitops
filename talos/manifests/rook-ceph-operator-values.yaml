@@ -1,0 +1,122 @@
+# Rook-Ceph Operator Elite Configuration
+# Version: 1.18.x (latest stable)
+# Features: Production-ready, HA, Monitoring, Talos-optimized
+
+# Image Configuration
+image:
+  repository: rook/ceph
+  tag: v1.18.8
+  pullPolicy: IfNotPresent
+
+# CSI Images
+csi:
+  enableCSIHostNetwork: true
+  pluginTolerations:
+    - operator: Exists
+  provisionerTolerations:
+    - operator: Exists
+
+  # CSI Driver Images
+  cephcsi:
+    image: quay.io/cephcsi/cephcsi:v3.13.0
+
+  registrar:
+    image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.12.0
+
+  provisioner:
+    image: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
+
+  snapshotter:
+    image: registry.k8s.io/sig-storage/csi-snapshotter:v8.2.0
+
+  attacher:
+    image: registry.k8s.io/sig-storage/csi-attacher:v4.7.0
+
+  resizer:
+    image: registry.k8s.io/sig-storage/csi-resizer:v1.12.0
+
+  # CSI CephFS plugin
+  cephfsPodLabels: {}
+  cephfsGrpcMetricsPort: 9091
+  cephfsLivenessMetricsPort: 9081
+
+  # CSI RBD plugin
+  rbdPodLabels: {}
+  rbdGrpcMetricsPort: 9090
+  rbdLivenessMetricsPort: 9080
+
+  # Enable metrics
+  enableGrpcMetrics: true
+  enableCSIDriverSeLinuxMount: false
+
+# Enable discovery daemon (for automatic device discovery)
+enableDiscoveryDaemon: true
+discoveryDaemonResources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Monitoring
+monitoring:
+  enabled: true
+
+# Resources for operator
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Node affinity and tolerations
+tolerations:
+  - operator: Exists
+
+nodeAffinity: {}
+
+# Unreachable node toleration
+unreachableNodeTolerationSeconds: 5
+
+# Current namespace only mode (false for cluster-wide)
+currentNamespaceOnly: false
+
+# Enable OBC (Object Bucket Claims)
+enableOBCWatchOnAllNamespaces: true
+
+# Host networking
+hostNetwork: false
+
+# Admission controller
+admissionController:
+  tolerations:
+    - operator: Exists
+
+# RBAC
+rbacEnable: true
+pspEnable: false
+
+# Agent configuration
+agent:
+  tolerations:
+    - operator: Exists
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Ceph CSI
+cephCommandsTimeoutSeconds: "15"
+
+# Log level
+logLevel: INFO
+
+# Disable Telemetry
+disableAdmissionController: false
+disableStatusPoller: false

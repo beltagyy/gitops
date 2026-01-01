@@ -1,0 +1,22 @@
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: main-pool
+spec:
+  blocks:
+  - start: "10.198.141.230"
+    stop: "10.198.141.240"
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: main-policy
+spec:
+  loadBalancerIPs: true
+  interfaces:
+  - ^eth[0-9]+
+  nodeSelector:
+    matchExpressions:
+    - key: node-role.kubernetes.io/control-plane
+      operator: DoesNotExist

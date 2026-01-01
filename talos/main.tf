@@ -14,17 +14,14 @@ locals {
     "net.ifnames=0" #ensures interface name is standard eth0
   ]
   talos_kernel_modules = [
-    #modules used for longhorn and storage
+    #modules used for rook-ceph and storage
     "nvme_tcp",
-    "vfio_pci",
-    "uio_pci_generic",
+    "rbd",           # for Ceph RBD
     "br_netfilter",  # for Cilium CNI
     "overlay"        # for container networking
   ]
   talos_extensions = [
-    #extensions needed for longhorn and storage
-    "siderolabs/iscsi-tools",
-    "siderolabs/util-linux-tools",
+    #extensions needed for rook-ceph and storage
     # Additional useful extensions
     "siderolabs/qemu-guest-agent"
   ]
@@ -80,10 +77,15 @@ module "bootstrap-node" {
     # Certificate Management
     "cert-manager" = "manifests/cert_manager.yaml"
 
-    # Storage - CSI Driver (Elite Longhorn with HA, snapshots, backups)
-    longhorn = "manifests/longhorn.yaml"
-    # "longhorn-storage-classes" = "manifests/longhorn-storage-classes.yaml"
-    # "longhorn-recurring-jobs" = "manifests/longhorn-recurring-jobs.yaml"
+    # Storage - COMMENTED OUT (Rook-Ceph - complex setup, PVC binding issues)
+    # "rook-ceph-operator" = "manifests/rook-ceph-operator.yaml"
+    # "rook-ceph-cluster" = "manifests/rook-ceph-cluster.yaml"
+
+    # Storage - COMMENTED OUT (Longhorn - incompatible with Cilium kube-proxy replacement)
+    # longhorn = "manifests/longhorn.yaml"
+
+    # Storage - OpenEBS LocalPV (simple, production-ready, Cilium-compatible)
+    "openebs" = "manifests/openebs.yaml"
 
     # Kubernetes Dashboard
     headlamp = "manifests/headlamp.yaml"
@@ -96,9 +98,9 @@ module "bootstrap-node" {
     "prometheus-grafana" = "manifests/prometheus-grafana.yaml"
     loki = "manifests/loki.yaml"
 
-    # Grafana Dashboards for Cilium and Longhorn
+    # Grafana Dashboards for Cilium and Ceph
     "grafana-dashboard-hubble" = "manifests/grafana-hubble-dashboard-configmap.yaml"
-    "grafana-dashboard-longhorn" = "manifests/longhorn-grafana-dashboard.yaml"
+    # "grafana-dashboard-ceph" = "manifests/ceph-grafana-dashboard.yaml"  # TODO: Add Ceph dashboard
 
     # CI/CD & Management
     # jenkins = "manifests/jenkins.yaml"

@@ -64,6 +64,9 @@ spec:
         args:
           - "-in-cluster"
           - "-plugins-dir=/headlamp/plugins"
+        env:
+          - name: HEADLAMP_CONFIG_OIDC_ENABLED
+            value: "false"
         ports:
         - containerPort: 4466
           name: http
@@ -115,7 +118,7 @@ metadata:
   labels:
     app: headlamp
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
   - port: 80
     targetPort: 4466

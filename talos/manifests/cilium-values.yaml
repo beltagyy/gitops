@@ -47,7 +47,6 @@ sessionAffinity: true
 # Enable Socket LB
 socketLB:
   enabled: true
-  hostNamespaceOnly: false
 
 # Node Port
 nodePort:
