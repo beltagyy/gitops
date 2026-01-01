@@ -23,7 +23,10 @@ locals {
   talos_extensions = [
     #extensions needed for rook-ceph and storage
     # Additional useful extensions
-    "siderolabs/qemu-guest-agent"
+    "siderolabs/qemu-guest-agent",
+    # Longhorn requirements
+    "siderolabs/iscsi-tools",
+    "siderolabs/util-linux-tools"
   ]
 }
 ## Secrets

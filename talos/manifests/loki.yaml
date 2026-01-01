@@ -106,9 +106,6 @@ data:
       per_stream_rate_limit: 50MB
       per_stream_rate_limit_burst: 100MB
 
-    chunk_store_config:
-      max_look_back_period: 0s
-
     table_manager:
       retention_deletes_enabled: true
       retention_period: 744h
@@ -131,7 +128,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 50Gi
+      storage: 20Gi
 ---
 apiVersion: apps/v1
 kind: StatefulSet

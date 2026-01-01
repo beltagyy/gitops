@@ -1,0 +1,21 @@
+# Talos Machine Config Patch for Longhorn Support
+# Apply this to your Talos machine configuration to enable Longhorn
+
+machine:
+  # System extensions required for Longhorn
+  install:
+    extensions:
+      - image: ghcr.io/siderolabs/iscsi-tools:latest
+      - image: ghcr.io/siderolabs/util-linux-tools:latest
+
+# For Talos v1.10.x+: Use UserVolumeConfig
+# For Talos < v1.10.x: Use kubelet extra mounts (see below)
+
+# Optional: For V2 Data Engine (advanced)
+# machine:
+#   sysctls:
+#     vm.nr_hugepages: "1024"
+#   kernel:
+#     modules:
+#       - name: nvme_tcp
+#       - name: vfio_pci

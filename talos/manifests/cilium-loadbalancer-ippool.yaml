@@ -1,0 +1,22 @@
+---
+# Cilium LoadBalancer IP Pool for L2 announcements
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: default
+spec:
+  blocks:
+  - start: "10.198.141.230"
+    stop: "10.198.141.240"
+---
+# L2 Announcement Policy
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default
+spec:
+  loadBalancerIPs: true
+  interfaces:
+  - ^eth[0-9]+
+  nodeSelector:
+    matchLabels: {}

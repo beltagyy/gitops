@@ -1,0 +1,58 @@
+---
+# Portainer LoadBalancer Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: portainer-lb
+  namespace: portainer
+  annotations:
+    metallb.universe.tf/address-pool: default
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 9000
+    protocol: TCP
+  - name: edge
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: portainer
+---
+# Headlamp LoadBalancer Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: headlamp-lb
+  namespace: kube-system
+  annotations:
+    metallb.universe.tf/address-pool: default
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 4466
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: headlamp
+---
+# Longhorn UI LoadBalancer Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: longhorn-ui-lb
+  namespace: longhorn-system
+  annotations:
+    metallb.universe.tf/address-pool: default
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: longhorn-ui
