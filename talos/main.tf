@@ -64,8 +64,8 @@ module "bootstrap-node" {
     namespaces = "manifests/namespaces.yaml"
 
     # Networking - CNI must be deployed FIRST before anything else
-    # Elite Cilium with native routing, WireGuard, Hubble, BGP, kube-proxy replacement
-    cilium = "manifests/cilium.yaml"
+    # Minimal Cilium with native routing and kube-proxy replacement
+    cilium = "manifests/cilium-minimal.yaml"
 
     # Gateway API - Required for advanced ingress with Cilium
     #"gateway-api-crds" = "manifests/gateway-api-crds.yaml"

@@ -1,0 +1,79 @@
+# Minimal Cilium Configuration for Talos Linux
+# Based on: https://docs.siderolabs.com/kubernetes-guides/cni/deploying-cilium
+
+# IPAM
+ipam:
+  mode: kubernetes
+
+# Native Routing (no tunneling)
+routingMode: native
+autoDirectNodeRoutes: true
+directRoutingSkipUnreachable: true
+ipv4NativeRoutingCIDR: 10.244.0.0/16
+
+# Disable IPv6
+ipv6:
+  enabled: false
+
+# Kube-proxy replacement
+kubeProxyReplacement: true
+k8sServiceHost: 10.198.141.70
+k8sServicePort: "6443"
+
+# Disable features not needed for basic setup
+hubble:
+  enabled: false
+
+bgpControlPlane:
+  enabled: false
+
+# L2 announcements for LoadBalancer
+l2announcements:
+  enabled: true
+
+# Talos-specific: disable node init
+nodeinit:
+  enabled: false
+
+# Talos-specific: cgroup configuration
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# Talos-specific: security context (no SYS_MODULE)
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+# Operator
+operator:
+  replicas: 1
+
+# Resources
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 200m
+    memory: 512Mi
+
+# Tolerations
+tolerations:
+  - operator: Exists
