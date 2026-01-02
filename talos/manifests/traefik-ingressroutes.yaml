@@ -1,0 +1,96 @@
+---
+# ServersTransport to skip TLS verification for Portainer's self-signed cert
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: portainer-insecure-transport
+  namespace: portainer
+spec:
+  insecureSkipVerify: true
+---
+# Portainer IngressRoute (HTTPS backend)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: portainer-ingress
+  namespace: portainer
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`portainer.dev.dih.10.198.141.235.nip.io`)
+      kind: Rule
+      services:
+        - name: portainer
+          port: 9443
+          scheme: https
+          serversTransport: portainer-insecure-transport
+---
+# Headlamp IngressRoute (HTTP backend)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: headlamp-ingress
+  namespace: headlamp
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`headlamp.dev.dih.10.198.141.235.nip.io`)
+      kind: Rule
+      services:
+        - name: headlamp
+          port: 80
+---
+# Longhorn UI IngressRoute (HTTP backend)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: longhorn-ingress
+  namespace: longhorn-system
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`longhorn.dev.dih.10.198.141.235.nip.io`)
+      kind: Rule
+      services:
+        - name: longhorn-frontend
+          port: 80
+---
+# MinIO Console IngressRoute (HTTP backend)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio-console-ingress
+  namespace: minio
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`minio.dev.dih.10.198.141.235.nip.io`)
+      kind: Rule
+      services:
+        - name: minio-console
+          port: 9001
+---
+# Grafana IngressRoute (HTTP backend)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`grafana.dev.dih.10.198.141.235.nip.io`)
+      kind: Rule
+      services:
+        - name: grafana
+          port: 3000

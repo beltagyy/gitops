@@ -1,0 +1,25 @@
+---
+# Portainer Ingress using Cilium with HTTPS backend
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portainer-ingress
+  namespace: portainer
+  annotations:
+    # Use Cilium LoadBalancer with L2 announcement
+    service.cilium.io/lb-l2: "true"
+    # Assign specific IP from Cilium LB pool
+    io.cilium/lb-ipam-ips: "10.198.141.236"
+spec:
+  ingressClassName: cilium
+  rules:
+  - host: portainer.dev.dih.10.198.141.231.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: portainer
+            port:
+              number: 9000

@@ -1,0 +1,28 @@
+---
+# ServersTransport to skip TLS verification for Portainer's self-signed cert
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: portainer-insecure-transport
+  namespace: portainer
+spec:
+  insecureSkipVerify: true
+---
+# Portainer IngressRoute
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: portainer-ingress
+  namespace: portainer
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`portainer.dev.dih.10.198.141.235.nip.io`) && PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: portainer
+          port: 9443
+          scheme: https
+          serversTransport: portainer-insecure-transport

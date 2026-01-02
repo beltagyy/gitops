@@ -7,26 +7,38 @@ locals {
   nameservers = ["9.9.9.9","8.8.8.8", "8.8.4.4", "1.1.1.1"] # More dns because dns resolution fails randomly 
   gateway = "10.198.141.1" # I do not know who manages this network
   
-  #DO NOT CHANGE, it'll break the nodes
-  talos_version = "1.11.2"
-  
+  # Talos OS version for all nodes
+  # Updated to v1.12.0 for iscsi-tools compatibility with Longhorn
+  # Schematic: 53513e54bb39202f35694412577a6bc53d484744d35a126e5d42ef34785c0d83
+  # This schematic includes: qemu-guest-agent, iscsi-tools, util-linux-tools
+  talos_version = "1.12.0"
+
+  # Kernel arguments for all nodes
   talos_extra_kernel_args = [
-    "net.ifnames=0" #ensures interface name is standard eth0
+    "net.ifnames=0" # Ensures interface name is standard eth0 for consistency
   ]
+
+  # Kernel modules required for storage and networking
   talos_kernel_modules = [
-    #modules used for rook-ceph and storage
-    "nvme_tcp",
-    "rbd",           # for Ceph RBD
-    "br_netfilter",  # for Cilium CNI
-    "overlay"        # for container networking
+    # Storage modules
+    "nvme_tcp",      # NVMe over TCP for remote storage
+    "rbd",           # Ceph RADOS Block Device support
+    # Networking modules
+    "br_netfilter",  # Bridge netfilter for Cilium CNI
+    "overlay"        # Overlay filesystem for container networking
   ]
+
+  # Talos system extensions required for cluster functionality
+  # These extensions are compiled into a schematic and must be present on ALL nodes
+  # Changing these requires node upgrades with the new schematic
   talos_extensions = [
-    #extensions needed for rook-ceph and storage
-    # Additional useful extensions
+    # VM guest agent for better integration with Proxmox/hypervisor
     "siderolabs/qemu-guest-agent",
-    # Longhorn requirements
-    "siderolabs/iscsi-tools",
-    "siderolabs/util-linux-tools"
+
+    # Longhorn distributed storage requirements (CRITICAL)
+    # Without these, Longhorn manager will fail with "iscsiadm: No such file or directory"
+    "siderolabs/iscsi-tools",      # iSCSI initiator for volume attachments
+    "siderolabs/util-linux-tools"  # Utilities for disk management (nsenter, mount, etc.)
   ]
 }
 ## Secrets
