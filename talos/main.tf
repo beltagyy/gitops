@@ -75,54 +75,82 @@ module "bootstrap-node" {
   talos_extensions = local.talos_extensions
   cluster_endpoint = local.controlplane_url
   cluster_inline_manifests = {
-    # Core Infrastructure
-    namespaces = "manifests/namespaces.yaml"
+    # ============================================================
+    # CORE INFRASTRUCTURE (Always required)
+    # ============================================================
+    # 00-namespaces: Creates all required namespaces
+    namespaces = "manifests/00-namespaces/namespaces.yaml"
 
-    # Networking - CNI must be deployed FIRST before anything else
-    # Minimal Cilium with native routing and kube-proxy replacement
-    cilium = "manifests/cilium-minimal.yaml"
+    # ============================================================
+    # 10-NETWORKING: CNI, Ingress, Load Balancing (Always required)
+    # ============================================================
+    # Cilium CNI - Use cilium-minimal for most deployments
+    cilium = "manifests/10-networking/cilium-minimal.yaml"
 
-    # Gateway API - Required for advanced ingress with Cilium
-    #"gateway-api-crds" = "manifests/gateway-api-crds.yaml"
+    # Traefik Ingress Routes
+    # traefik-ingress = "manifests/10-networking/traefik-ingressroutes.yaml"
 
-    # Load Balancer & Ingress
-   # metallb = "manifests/metallb.yaml"
-    #ingress = "manifests/ingress.yaml"
+    # Gateway API (optional, for advanced routing)
+    # "gateway-api-crds" = "manifests/10-networking/gateway-api-crds.yaml"
 
-    # Certificate Management
-    "cert-manager" = "manifests/cert_manager.yaml"
+    # MetalLB Load Balancer (optional, Cilium L2 is simpler)
+    # metallb = "manifests/70-loadbalancing/metallb.yaml"
 
-    # Storage - COMMENTED OUT (Rook-Ceph - complex setup, PVC binding issues)
-    # "rook-ceph-operator" = "manifests/rook-ceph-operator.yaml"
-    # "rook-ceph-cluster" = "manifests/rook-ceph-cluster.yaml"
+    # ============================================================
+    # 20-SECURITY: Certificates & Network Policies (Recommended)
+    # ============================================================
+    "cert-manager" = "manifests/20-security/cert_manager.yaml"
 
-    # Storage - COMMENTED OUT (Longhorn - incompatible with Cilium kube-proxy replacement)
-    # longhorn = "manifests/longhorn.yaml"
+    # ============================================================
+    # 30-STORAGE: Choose one or more storage backends (Optional)
+    # ============================================================
+    # Longhorn (distributed HA storage) - NOW WORKS WITH CILIUM!
+    # See manifests/30-storage/longhorn/README.md for details
+    # longhorn = "manifests/30-storage/longhorn/longhorn.yaml"
 
-    # Storage - OpenEBS LocalPV (simple, production-ready, Cilium-compatible)
-    "openebs" = "manifests/openebs.yaml"
+    # OpenEBS LocalPV (high-performance local storage)
+    # See manifests/30-storage/openebs/README.md for details
+    openebs = "manifests/30-storage/openebs/openebs.yaml"
 
-    # Kubernetes Dashboard
-    headlamp = "manifests/headlamp.yaml"
+    # Rook-Ceph (complex distributed storage)
+    # See manifests/30-storage/rook-ceph/README.md for details
+    # "rook-ceph-operator" = "manifests/30-storage/rook-ceph/rook-ceph-operator.yaml"
+    # "rook-ceph-cluster" = "manifests/30-storage/rook-ceph/rook-ceph-cluster.yaml"
 
-    # GitOps
-    # argocd = "manifests/argocd.yaml"
-    # "argocd-applications" = "manifests/argocd-applications.yaml"
+    # MinIO (S3-compatible object storage)
+    # See manifests/30-storage/minio/README.md for details
+    minio = "manifests/30-storage/minio/minio.yaml"
 
-    # Monitoring & Logging
-    "prometheus-grafana" = "manifests/prometheus-grafana.yaml"
-    loki = "manifests/loki.yaml"
+    # ============================================================
+    # 40-OBSERVABILITY: Metrics, Logs, Dashboards (Optional)
+    # ============================================================
+    # Prometheus + Grafana (metrics collection and visualization)
+    "prometheus-grafana" = "manifests/40-observability/prometheus/prometheus-grafana.yaml"
 
-    # Grafana Dashboards for Cilium and Ceph
-    "grafana-dashboard-hubble" = "manifests/grafana-hubble-dashboard-configmap.yaml"
-    # "grafana-dashboard-ceph" = "manifests/ceph-grafana-dashboard.yaml"  # TODO: Add Ceph dashboard
+    # Loki (centralized logging)
+    loki = "manifests/40-observability/loki/loki.yaml"
 
-    # CI/CD & Management
-    # jenkins = "manifests/jenkins.yaml"
-    portainer = "manifests/portainer.yaml"
+    # Grafana Dashboards for network observability
+    "grafana-dashboard-hubble" = "manifests/40-observability/grafana/grafana-hubble-dashboard-configmap.yaml"
 
-    # Object Storage
-    minio = "manifests/minio.yaml"
+    # ============================================================
+    # 50-MANAGEMENT: Web UIs for Cluster Management (Optional)
+    # ============================================================
+    # Headlamp - Kubernetes Dashboard
+    headlamp = "manifests/50-management/headlamp/headlamp.yaml"
+
+    # Portainer - Container Management UI
+    portainer = "manifests/50-management/portainer/portainer.yaml"
+
+    # ============================================================
+    # 60-GITOPS: Continuous Delivery & CI/CD (Optional)
+    # ============================================================
+    # ArgoCD - GitOps continuous delivery
+    # argocd = "manifests/60-gitops/argocd/argocd.yaml"
+    # "argocd-applications" = "manifests/60-gitops/argocd/argocd-applications.yaml"
+
+    # Jenkins - CI/CD automation
+    # jenkins = "manifests/60-gitops/jenkins/jenkins.yaml"
   }
   config_templates = {
     # Disable Flannel CNI and kube-proxy for Cilium
